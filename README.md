@@ -1,6 +1,4 @@
-# Cucumber Selenium Boilerplate
-
-A minimal, production-ready boilerplate for **Cucumber BDD + Selenium WebDriver + TestNG + Maven** automation testing. Uses [Dikahadir](https://magang.dikahadir.com/) as the sample application, with only the **Login** feature implemented as a clean starting point.
+# Dikahadir Automation
 
 ---
 

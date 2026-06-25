@@ -22,22 +22,8 @@ Thank you for contributing to this project. This document covers Git workflow, b
 ### 1. Clone or Fork
 
 ```bash
-git clone https://github.com/kelompok1/selenium-cucumber-boilerplate.git
-cd selenium-cucumber-boilerplate
-```
-
-If you're an external contributor, fork first then add upstream:
-
-```bash
-git remote add upstream https://github.com/kelompok1/selenium-cucumber-boilerplate.git
-git remote -v
-```
-
-### 2. Configure Git Identity
-
-```bash
-git config user.name "Your Name"
-git config user.email "your.email@example.com"
+git clone https://github.com/SQA-JuaraCoding28/automation-dikahadir.git
+cd automation-dikahadir
 ```
 
 ---
