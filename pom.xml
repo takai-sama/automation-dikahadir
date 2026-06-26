@@ -28,6 +28,9 @@
         <!-- Logging -->
         <slf4j.version>2.0.18</slf4j.version>
         <logback.version>1.5.34</logback.version>
+
+        <!-- Default platform if not specified via -Dplatform -->
+        <platform>all</platform>
     </properties>
 
     <dependencies>
@@ -89,6 +92,12 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20231013</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -111,6 +120,10 @@
                 <version>3.5.6</version>
                 <configuration>
                     <testFailureIgnore>false</testFailureIgnore>
+                    <!--
+                        Default: run both runners.
+                        Override with: -Dtest=WebTestRunner  OR  -Dtest=MobileTestRunner
+                    -->
                     <includes>
                         <include>**/*TestRunner.java</include>
                     </includes>
