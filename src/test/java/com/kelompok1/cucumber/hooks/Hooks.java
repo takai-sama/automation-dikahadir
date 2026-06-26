@@ -18,17 +18,18 @@ import org.slf4j.LoggerFactory;
 
 import com.kelompok1.cucumber.core.ConfigReader;
 import com.kelompok1.cucumber.core.DriverManager;
+import com.kelompok1.cucumber.core.PlatformContext;
 
 import java.time.Duration;
 
 /**
  * Cucumber Hooks — WebDriver lifecycle management.
  *
- * @Before runs before every scenario: creates and configures the WebDriver.
- * @After  runs after every scenario:  captures screenshot on failure, then quits driver.
+ * @Before  creates and configures the WebDriver for the active platform.
+ * @After   captures screenshot on failure, then quits the driver.
  *
- * Order matters: @Before here fires before any step definition constructor runs,
- * so DriverManager.getDriver() is guaranteed non-null when BasePage initializes.
+ * ConfigReader reads from the platform-specific config file, so browser,
+ * timeouts, and headless mode can differ between web and mobile runs if needed.
  */
 public class Hooks {
 
@@ -36,7 +37,7 @@ public class Hooks {
 
     @Before(order = 0)
     public void setUp() {
-        logger.info("Setting up WebDriver...");
+        logger.info("Setting up WebDriver for platform: {}", PlatformContext.get());
 
         WebDriver driver = createWebDriver();
         driver.manage().timeouts().implicitlyWait(
@@ -60,7 +61,7 @@ public class Hooks {
                 final byte[] screenshot = ((TakesScreenshot) DriverManager.getDriver())
                         .getScreenshotAs(OutputType.BYTES);
                 scenario.attach(screenshot, "image/png", "Failure Screenshot");
-                logger.info("Screenshot attached to report for failed scenario");
+                logger.info("Screenshot attached for failed scenario");
             } catch (Exception e) {
                 logger.error("Failed to capture screenshot: {}", e.getMessage());
             }
@@ -71,7 +72,7 @@ public class Hooks {
     }
 
     private WebDriver createWebDriver() {
-        String browser = ConfigReader.getProperty("browser", "chrome").toLowerCase().trim();
+        String browser  = ConfigReader.getProperty("browser", "chrome").toLowerCase().trim();
         boolean headless = ConfigReader.getBoolean("headless");
 
         logger.info("Creating {} WebDriver (headless={})", browser, headless);
@@ -102,7 +103,7 @@ public class Hooks {
 
             default:
                 throw new IllegalArgumentException(
-                    "Unsupported browser: '" + browser + "'. Valid options: chrome, firefox, edge");
+                    "Unsupported browser: '" + browser + "'. Valid: chrome, firefox, edge");
         }
     }
 }

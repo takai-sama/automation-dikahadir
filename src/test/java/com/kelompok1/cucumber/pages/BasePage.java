@@ -16,6 +16,7 @@ import java.util.List;
 
 /**
  * Base Page Object with reusable Selenium methods.
+ * Shared by both web and mobile page objects.
  * All page classes should extend this class.
  */
 public abstract class BasePage {
@@ -27,8 +28,8 @@ public abstract class BasePage {
 
     public BasePage() {
         this.driver    = DriverManager.getDriver();
-        this.wait      = new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("standard.wait")));
-        this.shortWait = new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("short.wait")));
+        this.wait      = new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("standard.wait", 15)));
+        this.shortWait = new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("short.wait", 5)));
     }
 
     protected void navigateTo(String url) {
@@ -95,7 +96,16 @@ public abstract class BasePage {
         try {
             return wait.until(ExpectedConditions.urlToBe(expectedUrl));
         } catch (Exception e) {
-            logger.warn("URL did not become '{}'. Current URL: {}", expectedUrl, getCurrentUrl());
+            logger.warn("URL did not become '{}'. Current: {}", expectedUrl, getCurrentUrl());
+            return false;
+        }
+    }
+
+    protected boolean waitForUrlContains(String partialUrl) {
+        try {
+            return wait.until(ExpectedConditions.urlContains(partialUrl));
+        } catch (Exception e) {
+            logger.warn("URL did not contain '{}'. Current: {}", partialUrl, getCurrentUrl());
             return false;
         }
     }

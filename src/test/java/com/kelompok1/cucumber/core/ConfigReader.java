@@ -8,70 +8,55 @@ import com.kelompok1.cucumber.exceptions.ConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 /**
- * Singleton configuration reader.
+ * Platform-aware configuration reader.
+ *
+ * Loads the correct properties file based on the active platform:
+ *   - Platform.WEB    → config-web.properties
+ *   - Platform.MOBILE → config-mobile.properties
  *
  * Load priority (first match wins):
  *   1. JVM system property  (-Dkey=value)
- *   2. OS environment variable  (KEY=value, dots converted to underscores + uppercase)
- *   3. config.properties fallback
+ *   2. OS environment variable  (KEY=value, dots → underscores + uppercase)
+ *   3. Platform config file fallback
  *
- * This means CI pipelines can inject secrets as env vars without touching source files.
+ * Files are cached per platform so they are only loaded once per JVM run.
  */
 public class ConfigReader {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigReader.class);
-    private static final Properties properties = new Properties();
-    private static final String CONFIG_FILE = "config.properties";
 
-    static {
-        loadProperties();
-    }
+    // Cache: one Properties object per config file name
+    private static final Map<String, Properties> cache = new ConcurrentHashMap<>();
 
     private ConfigReader() {}
 
-    private static void loadProperties() {
-        try (InputStream input = ConfigReader.class.getClassLoader().getResourceAsStream(CONFIG_FILE)) {
-            if (input == null) {
-                logger.error("Configuration file not found: {}", CONFIG_FILE);
-                throw new ConfigurationException("Configuration file not found: " + CONFIG_FILE);
-            }
-            properties.load(input);
-            logger.info("Configuration loaded from {}", CONFIG_FILE);
-        } catch (IOException e) {
-            logger.error("Failed to load configuration file: {}", CONFIG_FILE, e);
-            throw new ConfigurationException("Failed to load configuration file: " + CONFIG_FILE, e);
-        }
-    }
+    // =========================================================================
+    // Public API
+    // =========================================================================
 
-    /**
-     * Resolves a property using the three-tier priority:
-     * system property -> environment variable -> properties file.
-     *
-     * Environment variable name is derived by uppercasing the key
-     * and replacing dots with underscores.
-     * e.g. "base.url" -> "BASE_URL"
-     */
     public static String getProperty(String key) {
         // 1. JVM system property
         String value = System.getProperty(key);
         if (value != null) {
-            logger.debug("Property '{}' resolved from system property", key);
+            logger.debug("Property '{}' from system property", key);
             return value;
         }
 
-        // 2. OS environment variable
+        // 2. OS environment variable (e.g. "base.url" → "BASE_URL")
         String envKey = key.toUpperCase().replace(".", "_");
         value = System.getenv(envKey);
         if (value != null) {
-            logger.debug("Property '{}' resolved from environment variable '{}'", key, envKey);
+            logger.debug("Property '{}' from env var '{}'", key, envKey);
             return value;
         }
 
-        // 3. Properties file fallback
-        value = properties.getProperty(key);
-        logger.debug("Property '{}' resolved from config file: {}", key, value);
+        // 3. Platform-specific config file
+        value = platformProperties().getProperty(key);
+        logger.debug("Property '{}' from config file: {}", key, value);
         return value;
     }
 
@@ -94,5 +79,28 @@ public class ConfigReader {
 
     public static int getInt(String key, int defaultValue) {
         return Integer.parseInt(getProperty(key, String.valueOf(defaultValue)));
+    }
+
+    // =========================================================================
+    // Internal
+    // =========================================================================
+
+    private static Properties platformProperties() {
+        String fileName = PlatformContext.get().getConfigFile();
+        return cache.computeIfAbsent(fileName, ConfigReader::load);
+    }
+
+    private static Properties load(String fileName) {
+        Properties props = new Properties();
+        try (InputStream in = ConfigReader.class.getClassLoader().getResourceAsStream(fileName)) {
+            if (in == null) {
+                throw new ConfigurationException("Config file not found on classpath: " + fileName);
+            }
+            props.load(in);
+            logger.info("Loaded config: {}", fileName);
+        } catch (IOException e) {
+            throw new ConfigurationException("Failed to load config file: " + fileName, e);
+        }
+        return props;
     }
 }

@@ -1,60 +1,81 @@
 package com.kelompok1.cucumber.core;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * Centralized test data loader.
+ * Platform-aware test data loader.
  *
- * All values are sourced from test-data.properties (single source of truth).
- * Use ConfigReader to load them — do not duplicate constants here.
+ * Loads the correct test-data file based on the active platform:
+ *   - Platform.WEB    → test-data-web.properties
+ *   - Platform.MOBILE → test-data-mobile.properties
  *
- * Why: having data in both Java constants and a properties file causes drift.
- * Someone updates one file and not the other, then a test fails mysteriously
- * six weeks later. One source, one place to change.
+ * This is the single source of truth for test data values.
+ * No credentials or expected strings are hardcoded in Java or feature files.
  *
- * Usage example:
- *   String username = TestData.get("user.valid.username");
- *   String error    = TestData.get("error.login.locked.user");
+ * Usage:
+ *   TestData.get("user.valid.email")
+ *   TestData.validEmail()
+ *   TestData.validPassword()
  */
 public class TestData {
 
-    private static final String TEST_DATA_FILE = "test-data.properties";
-    private static final java.util.Properties props = new java.util.Properties();
-
-    static {
-        try (java.io.InputStream in =
-                TestData.class.getClassLoader().getResourceAsStream(TEST_DATA_FILE)) {
-            if (in == null) {
-                throw new RuntimeException("test-data.properties not found on classpath");
-            }
-            props.load(in);
-        } catch (java.io.IOException e) {
-            throw new RuntimeException("Failed to load " + TEST_DATA_FILE, e);
-        }
-    }
+    // Cache: one Properties per test-data file
+    private static final Map<String, Properties> cache = new ConcurrentHashMap<>();
 
     private TestData() {}
 
+    // =========================================================================
+    // Generic accessor
+    // =========================================================================
+
     /**
-     * Returns the value for the given key from test-data.properties.
-     * Throws if the key is missing so test failures are loud and obvious.
+     * Returns the value for the given key from the active platform's test-data file.
+     * Throws loudly if the key is missing so failures are obvious.
      */
     public static String get(String key) {
-        String value = props.getProperty(key);
+        String value = platformProperties().getProperty(key);
         if (value == null) {
-            throw new RuntimeException("Missing test data key: '" + key + "' in " + TEST_DATA_FILE);
+            String fileName = PlatformContext.get().getTestDataFile();
+            throw new RuntimeException(
+                "Missing test data key: '" + key + "' in " + fileName);
         }
         return value;
     }
 
-    // Convenience constants — these are just named accessors, not duplicate values.
-    // The actual strings live exclusively in test-data.properties.
-    public static String validUsername()         { return get("user.valid.username"); }
-    public static String validPassword()         { return get("user.valid.password"); }
-    public static String lockedUsername()        { return get("user.locked.username"); }
-    public static String problemUsername()       { return get("user.problem.username"); }
-    public static String performanceUsername()   { return get("user.performance.username"); }
+    // =========================================================================
+    // Named convenience accessors
+    // =========================================================================
 
-    public static String errorInvalidCredential() { return get("error.login.invalid.credential"); }
-    public static String errorLockedUser()         { return get("error.login.locked.user"); }
-    public static String errorUsernameRequired()   { return get("error.login.username.required"); }
+    public static String validEmail()    { return get("user.valid.email"); }
+    public static String validPassword() { return get("user.valid.password"); }
+
+    public static String errorInvalidCredential()  { return get("error.login.invalid.credential"); }
     public static String errorPasswordRequired()   { return get("error.login.password.required"); }
+    public static String errorEmailMissingAt()     { return get("error.login.email.missing.at"); }
+
+    // =========================================================================
+    // Internal
+    // =========================================================================
+
+    private static Properties platformProperties() {
+        String fileName = PlatformContext.get().getTestDataFile();
+        return cache.computeIfAbsent(fileName, TestData::load);
+    }
+
+    private static Properties load(String fileName) {
+        Properties props = new Properties();
+        try (InputStream in = TestData.class.getClassLoader().getResourceAsStream(fileName)) {
+            if (in == null) {
+                throw new RuntimeException("Test data file not found on classpath: " + fileName);
+            }
+            props.load(in);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load test data file: " + fileName, e);
+        }
+        return props;
+    }
 }
