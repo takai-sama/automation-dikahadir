@@ -14,31 +14,26 @@ import com.kelompok1.cucumber.reporting.MDReportGenerator;
  *
  * Platform is set in a static initializer so it is available before
  * AbstractTestNGCucumberTests initializes the Cucumber runtime.
+ * 
  * @BeforeClass fires too late — after the runtime is already built.
  *
- * Run this runner only:
- *   mvn clean test -Dtest=WebTestRunner
+ *              Run this runner only:
+ *              mvn clean test -Dtest=WebTestRunner
  *
- * Run with tag filter:
- *   mvn clean test -Dtest=WebTestRunner -Dcucumber.filter.tags="@smoke"
+ *              Run with tag filter:
+ *              mvn clean test -Dtest=WebTestRunner
+ *              -Dcucumber.filter.tags="@smoke"
  */
-@CucumberOptions(
-    features = "src/test/resources/features/web",
-    glue = {
+@CucumberOptions(features = "src/test/resources/features/web", glue = {
         "com.kelompok1.cucumber.stepdefinitions.web",
         "com.kelompok1.cucumber.hooks"
-    },
-    plugin = {
+}, plugin = {
         "pretty",
         "html:target/cucumber-reports/web/cucumber.html",
         "json:target/cucumber-reports/web/cucumber.json",
         "junit:target/cucumber-reports/web/cucumber.xml",
         "timeline:target/cucumber-reports/web/timeline"
-    },
-    monochrome = true,
-    tags = "not @wip"
-)
-
+}, monochrome = true, tags = "@test")
 
 public class WebTestRunner extends AbstractTestNGCucumberTests {
 
